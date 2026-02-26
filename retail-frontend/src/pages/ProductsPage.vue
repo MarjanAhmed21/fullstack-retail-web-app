@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import ProductCard from "../components/ProductCard.vue";
+import { useRouter } from "vue-router";
+const router = useRouter();
 
 interface Product {
   id: number;
@@ -52,10 +54,11 @@ onMounted(async () => {
     <p v-if="loading">Loading...</p>
 
     <div v-else class="grid">
-      <ProductCard
-        v-for="product in products"
-        :key="product.id"
-        :product="product"
+      <ProductCard 
+      v-for="product in products"
+      :key="product.id"
+      :product="product" 
+      @click="router.push(`/products/${product.id}`)"
       />
     </div>
   </div>

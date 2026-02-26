@@ -1,0 +1,110 @@
+<script setup lang="ts">
+import { onMounted } from "vue";
+import { useBasketStore } from "../stores/basket";
+import { storeToRefs } from "pinia";
+import { getCurrentInstance } from "vue";
+
+console.log("APP INSTANCE:", getCurrentInstance()?.appContext.app);
+
+onMounted(() => {
+  console.log("Basket items on BasketPage:", items.value);
+});
+
+const basket = useBasketStore();
+
+// unwrap reactive refs
+const { items, totalPrice } = storeToRefs(basket);
+
+const increaseQuantity = (item: typeof items.value[0]) => {
+  basket.addItem({ ...item, quantity: 1 });
+};
+
+const decreaseQuantity = (item: typeof items.value[0]) => {
+  if (item.quantity > 1) {
+    item.quantity -= 1;
+  } else {
+    basket.removeItem(item.productId, item.size);
+  }
+};
+
+const removeItem = (item: typeof items.value[0]) => {
+  basket.removeItem(item.productId, item.size);
+};
+</script>
+
+
+
+<template>
+  <div class="basket-page">
+    <h1>Your Basket</h1>
+
+    <div v-if="items.length === 0">
+      <p>Your basket is empty.</p>
+    </div>
+
+    <div v-else>
+      <div class="basket-item" v-for="item in items" :key="item.productId + '-' + item.size">
+        <img :src="item.image_url" class="item-image" />
+        <div class="item-info">
+          <h3>{{ item.name }}</h3>
+          <p>Size: {{ item.size }}</p>
+          <p>Price: £{{ item.price }}</p>
+          <p>Quantity: {{ item.quantity }}</p>
+
+          <div class="quantity-controls">
+            <button @click="decreaseQuantity(item)">-</button>
+            <button @click="increaseQuantity(item)">+</button>
+            <button class="remove-btn" @click="removeItem(item)">Remove</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="basket-total">
+        <h2>Total: £{{ totalPrice }}</h2>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.basket-page {
+  padding: 2rem;
+}
+
+.basket-item {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 1rem;
+}
+
+.item-image {
+  width: 120px;
+  height: auto;
+  object-fit: contain;
+}
+
+.item-info h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.quantity-controls button {
+  margin-right: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+.remove-btn {
+  color: red;
+  border: none;
+  background: none;
+}
+
+.basket-total {
+  margin-top: 2rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+</style>

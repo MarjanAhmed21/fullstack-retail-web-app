@@ -27,9 +27,33 @@ router.get("/", async (req, res) => {
   }
 });
 
+
+// GET /products/:id
+router.get("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await pool.query(
+      "SELECT * FROM products WHERE id = $1",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
+
 // POST /products
 router.post("/", async (req, res) => {
-  const { name, description, price, stock, image_url } = req.body;
+  const { name, description, long_description, price, stock, image_url, category } = req.body;
 
   if (!name || price == null || stock == null) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -37,10 +61,10 @@ router.post("/", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO products (name, description, price, stock, image_url)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO products (name, description, long_description, price, stock, image_url, category)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [name, description || "", price, stock, image_url || ""]
+      [name, description || "", long_description || "", price, stock, image_url, category || ""]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -52,20 +76,21 @@ router.post("/", async (req, res) => {
 // PUT /products
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, description, price, stock, image_url, category } = req.body;
+  const { name, description, long_description, price, stock, image_url, category } = req.body;
 
-  try {
+ try {
     const result = await pool.query(
       `UPDATE products
        SET name = $1,
            description = $2,
-           price = $3,
-           stock = $4,
-           image_url = $5,
-           category = $6
-       WHERE id = $7
+           long_description = $3,
+           price = $4,
+           stock = $5,
+           image_url = $6,
+           category = $7
+       WHERE id = $8
        RETURNING *`,
-      [name, description, price, stock, image_url, category, id]
+      [name, description, long_description, price, stock, image_url, category, id]
     );
 
     if (result.rows.length === 0) {
