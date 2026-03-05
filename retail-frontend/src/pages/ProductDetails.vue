@@ -15,6 +15,7 @@ interface Product {
   stock: number;
   image_url: string;
   category: string | null;
+  disabled_sizes?: string[];
 }
 
 
@@ -92,13 +93,20 @@ onMounted(async () => {
 
   <div class="size-grid">
     <button
-      v-for="size in sizes"
-      :key="size"
-      :class="['size-btn', { selected: selectedSize === size }]"
-      @click="selectSize(size)"
-    >
-      {{ size }}
-    </button>
+  v-for="size in sizes"
+  :key="size"
+  :class="[
+    'size-btn',
+    { 
+      selected: selectedSize === size,
+      disabled: product.disabled_sizes?.includes(size)
+    }
+  ]"
+  :disabled="product.disabled_sizes?.includes(size)"
+  @click="selectSize(size)"
+>
+  {{ size }}
+</button>
 
     <p v-if="sizeError" class="size-error">
     Please select a size before adding to basket.
@@ -192,11 +200,18 @@ onMounted(async () => {
   padding: 0.3rem 0.5rem;
 }
 
+.size-btn.disabled {
+  text-decoration: line-through;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .size-error {
   color: red;
   margin-top: 0.6rem;
   font-size: 0.9rem;
 }
+
 
 .price {
   font-size: 1.5rem;

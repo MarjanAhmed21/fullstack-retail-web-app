@@ -30,6 +30,54 @@ const decreaseQuantity = (item: typeof items.value[0]) => {
 const removeItem = (item: typeof items.value[0]) => {
   basket.removeItem(item.productId, item.size);
 };
+
+
+
+const checkout = async () => {
+  if (items.value.length === 0) return alert("Your basket is empty");
+
+  const token = localStorage.getItem("token");
+  if (!token) return alert("You must be logged in to checkout");
+
+  try {
+    // 1. Create a new order
+    const orderRes = await fetch("http://localhost:3000/orders", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const order = await orderRes.json();
+
+    // 2. Add items to the order
+    for (const item of items.value) {
+      await fetch(`http://localhost:3000/orders/${order.id}/items`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          product_id: item.productId,
+          quantity: item.quantity,
+        }),
+      });
+    }
+
+    // 3. Checkout the order
+    await fetch(`http://localhost:3000/orders/${order.id}/checkout`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    alert("Checkout complete!");
+
+    // 4. Clear basket
+    basket.items = [];
+    localStorage.removeItem("basket");
+  } catch (err) {
+    console.error("Checkout error:", err);
+    alert("Something went wrong during checkout");
+  }
+};
 </script>
 
 
@@ -62,6 +110,10 @@ const removeItem = (item: typeof items.value[0]) => {
       <div class="basket-total">
         <h2>Total: £{{ totalPrice }}</h2>
       </div>
+
+      <div v-if="items.length > 0" class="checkout-btn-container">
+  <button class="checkout-btn" @click="checkout">Checkout</button>
+</div>
     </div>
   </div>
 </template>
@@ -106,5 +158,24 @@ const removeItem = (item: typeof items.value[0]) => {
   margin-top: 2rem;
   font-size: 1.5rem;
   font-weight: bold;
+}
+
+
+.checkout-btn-container {
+  margin-top: 1rem;
+}
+
+.checkout-btn {
+  padding: 0.8rem 1.5rem;
+  background: green;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.checkout-btn:hover {
+  opacity: 0.85;
 }
 </style>

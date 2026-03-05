@@ -38,7 +38,7 @@ const toggleAdminActions = (id: number) => {
 };
 
 const viewProduct = (product: Product) => {
-  router.push(`/products/${product.id}`);
+  router.push(`/admin/products/${product.id}`);
 };
 
 

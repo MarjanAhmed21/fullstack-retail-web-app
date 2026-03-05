@@ -1,36 +1,133 @@
 <script setup lang="ts">
-import { useRouter } from "vue-router";
-import { ref, computed, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import { ref, computed, onMounted, onBeforeUnmount } from "vue";
 import { useBasketStore } from "../stores/basket";
 import { storeToRefs } from "pinia";
 
 const router = useRouter();
+const route = useRoute();
 
+/* =========================
+   AUTH STATE
+========================= */
+
+const token = ref<string | null>(null);
+const userName = ref<string | null>(null);
+const role = ref<string | null>(null);
+
+const isLoggedIn = computed(() => !!token.value);
+
+const decodeToken = (token: string) => {
+  try {
+    return JSON.parse(atob(token.split(".")[1]));
+  } catch {
+    return null;
+  }
+};
+
+const updateAuth = () => {
+  const storedToken = localStorage.getItem("token");
+  const storedRole = localStorage.getItem("role");
+
+  token.value = storedToken;
+  role.value = storedRole;
+
+  if (storedToken) {
+    const decoded = decodeToken(storedToken);
+    userName.value = decoded?.name || "Account";
+  } else {
+    userName.value = null;
+  }
+};
+
+onMounted(() => {
+  updateAuth();
+  window.addEventListener("storage", updateAuth);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("storage", updateAuth);
+});
+
+/* =========================
+   ACCOUNT DROPDOWN
+========================= */
+
+const showAccountMenu = ref(false);
+const accountContainer = ref<HTMLElement | null>(null);
+
+const toggleAccountMenu = () => {
+  showAccountMenu.value = !showAccountMenu.value;
+};
+
+const logout = () => {
+  localStorage.removeItem("token");
+  updateAuth();
+  showAccountMenu.value = false;
+  router.push("/products");
+};
+
+const handleClickOutside = (event: MouseEvent) => {
+  if (
+    accountContainer.value &&
+    !accountContainer.value.contains(event.target as Node)
+  ) {
+    showAccountMenu.value = false;
+  }
+};
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
+
+/* =========================
+   NAVIGATION
+========================= */
+
+const homeRoute = computed(() => {
+  return role.value === "admin" ? "/admin/products" : "/products";
+});
+
+/* =========================
+   BASKET
+========================= */
 
 const basket = useBasketStore();
 const { itemCount } = storeToRefs(basket);
 
 const goToBasket = () => {
-  router.push("/basket");
+  if (role.value === "admin") {
+    router.push("/admin/products"); // or an admin-specific basket page if exists
+  } else {
+    router.push("/basket");
+  }
 };
 
-
+/* =========================
+   SEARCH
+========================= */
 
 const searchTerm = ref("");
 const products = ref<Array<{ id: number; name: string }>>([]);
 const showSuggestions = ref(false);
 
+const hideSuggestions = () => {
+  setTimeout(() => (showSuggestions.value = false), 200);
+};
+
 onMounted(async () => {
   try {
     const res = await fetch("http://localhost:3000/products");
-    const data = await res.json();
-    products.value = data; // assuming each product has id and name
+    products.value = await res.json();
   } catch (err) {
     console.error("Error fetching products:", err);
   }
 });
 
-// filter products based on input
 const filteredProducts = computed(() => {
   if (!searchTerm.value) return [];
   return products.value.filter(p =>
@@ -41,53 +138,108 @@ const filteredProducts = computed(() => {
 const goToProduct = (id: number) => {
   searchTerm.value = "";
   showSuggestions.value = false;
-  router.push(`/products/${id}`);
-};
 
+  {
+    router.push(`/products/${id}`);
+  }
+};
 </script>
 
 <template>
   <nav class="navbar">
-    <!-- Logo -->
+
+    <!-- LOGO -->
     <div class="nav-left">
-    <div class="logo" @click="router.push('/')">
-      RetailStore
-    </div>
+      <router-link :to="homeRoute" class="logo">
+        RetailStore
+      </router-link>
     </div>
 
-    <!-- Search -->
+    <!-- SEARCH -->
     <div class="nav-center">
-  <input
-    type="text"
-    placeholder="Search for products..."
-    v-model="searchTerm"
-    @focus="showSuggestions = true"
-    @blur="() => setTimeout(() => showSuggestions = false, 200)" 
-  />
+      <input
+        type="text"
+        placeholder="Search for products..."
+        v-model="searchTerm"
+        @focus="showSuggestions = true"
+        @blur="hideSuggestions"
+      />
 
-  <!-- Suggestions dropdown -->
-  <ul v-if="showSuggestions && filteredProducts.length" class="suggestions">
-    <li
-      v-for="product in filteredProducts"
-      :key="product.id"
-      @click="goToProduct(product.id)"
-    >
-      {{ product.name }}
-    </li>
-  </ul>
-</div>
+      <ul
+        v-if="showSuggestions && filteredProducts.length"
+        class="suggestions"
+      >
+        <li
+          v-for="product in filteredProducts"
+          :key="product.id"
+          @click="goToProduct(product.id)"
+        >
+          {{ product.name }}
+        </li>
+      </ul>
+    </div>
 
-    <!-- Icons -->
+    <!-- RIGHT SIDE -->
     <div class="nav-right">
-      <span class="icon">👤</span>
-      <span class="icon">❤️</span>
 
-      <div class="basket-icon" @click="goToBasket">
-        🛒
-        <span v-if="itemCount > 0" class="basket-count">
-          {{ itemCount }}
-        </span>
+      <!-- ACCOUNT -->
+      <div class="account-container" ref="accountContainer">
+
+        <div class="account-trigger" @click="toggleAccountMenu">
+          <span v-if="isLoggedIn">
+            {{ userName }}
+          </span>
+          <span v-else>
+            👤
+          </span>
+        </div>
+
+        <div v-if="showAccountMenu" class="account-dropdown">
+
+          <template v-if="!isLoggedIn">
+            <router-link
+              :to="{ path: '/login', query: { redirect: route.fullPath }}"
+              class="dropdown-item"
+              @click="showAccountMenu = false"
+            >
+              Sign In
+            </router-link>
+
+            <router-link
+              :to="{ path: '/signup', query: { redirect: route.fullPath }}"
+              class="dropdown-item"
+              @click="showAccountMenu = false"
+            >
+              Create Account
+            </router-link>
+          </template>
+
+          <template v-else>
+            <div class="dropdown-item" @click="logout">
+              Sign Out
+            </div>
+          </template>
+
+        </div>
       </div>
+
+      <router-link v-if="role === 'admin'" to="/admin" class="admin-link">
+  Admin Dashboard
+</router-link>
+
+      <!-- WISHLIST -->
+      <span v-if="role !== 'admin'" class="icon">❤️</span>
+
+
+      <!-- BASKET -->
+      <div v-if="role !== 'admin'" class="basket-icon" @click="goToBasket">
+        🛒
+      <span v-if="itemCount > 0" class="basket-count">
+        {{ itemCount }}
+      </span>
+      </div>
+      
+
     </div>
   </nav>
 </template>
@@ -102,33 +254,41 @@ const goToProduct = (id: number) => {
   background: white;
 }
 
-
 .nav-left {
   flex: 1;
-  display: flex;
-  justify-content: flex-start; /* logo on left */
-  align-items: center;
 }
 
 .nav-center {
   position: relative;
 }
 
+.nav-center input {
+  max-width: 500px;
+  min-width: 250px;
+  padding: 0.7rem 1rem;
+  border-radius: 25px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.nav-center input:focus {
+  outline: none;
+  border-color: purple;
+  box-shadow: 0 0 5px rgba(128, 0, 128, 0.5);
+}
+
 .suggestions {
   position: absolute;
   top: 100%;
-  left: 0;
   width: 100%;
   max-height: 250px;
   overflow-y: auto;
   background: white;
   border: 1px solid #ccc;
   border-radius: 8px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.15);
-  z-index: 50;
   margin-top: 4px;
-  padding: 0;
   list-style: none;
+  padding: 0;
 }
 
 .suggestions li {
@@ -144,52 +304,59 @@ const goToProduct = (id: number) => {
 .nav-right {
   flex: 1;
   display: flex;
-  justify-content: flex-end; /* icons on right */
+  justify-content: flex-end;
   align-items: center;
   gap: 1.5rem;
 }
-
-.nav-center input {
-  width: 100%;
-  max-width: 500px; /* will never be bigger than 500px */
-  min-width: 250px; /* still usable on small screens */
-  padding: 0.7rem 1rem;
-  border-radius: 25px;
-  border: 1px solid #ccc;
-  font-size: 1rem;
-  transition: all 0.2s ease;
-}
-
-.nav-center input:focus {
-  outline: none;
-  border-color: purple;
-  box-shadow: 0 0 5px rgba(128, 0, 128, 0.5);
-}
-
 
 .logo {
   font-size: 1.4rem;
   font-weight: bold;
+}
+
+.account-container {
+  position: relative;
+}
+
+.account-trigger {
   cursor: pointer;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  padding: 6px 12px;
+  border-radius: 20px;
+  transition: background 0.2s ease;
+  color: blue;
+  -webkit-text-stroke: 0.4px black;
+  text-decoration: underline;
 }
 
-.search-container {
-  flex: 1;
-  margin: 0 2rem;
+.account-trigger:hover {
+  background: #f3f3f3;
 }
 
-.search-container input {
-  height: 45px;
-  width: 500px;
-  font-size: 1rem;
-  padding: 0 1.2rem;
-  border-radius: 25px;
+.account-dropdown {
+  position: absolute;
+  top: 120%;
+  right: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  min-width: 180px;
+  z-index: 100;
 }
 
-.icons {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
+.dropdown-item {
+  display: block;
+  padding: 0.8rem 1rem;
+  cursor: pointer;
+  text-decoration: none;
+  color: black;
+}
+
+.dropdown-item:hover {
+  background: purple;
+  color: white;
 }
 
 .icon {

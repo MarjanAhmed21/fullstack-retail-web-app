@@ -76,7 +76,7 @@ router.post("/", async (req, res) => {
 // PUT /products
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, description, long_description, price, stock, image_url, category } = req.body;
+  const { name, description, long_description, price, stock, image_url, category, disabled_sizes } = req.body;
 
  try {
     const result = await pool.query(
@@ -87,10 +87,11 @@ router.put("/:id", async (req, res) => {
            price = $4,
            stock = $5,
            image_url = $6,
-           category = $7
-       WHERE id = $8
+           category = $7,
+           disabled_sizes = $8
+       WHERE id = $9
        RETURNING *`,
-      [name, description, long_description, price, stock, image_url, category, id]
+      [name, description, long_description, price, stock, image_url, category, disabled_sizes, id]
     );
 
     if (result.rows.length === 0) {
