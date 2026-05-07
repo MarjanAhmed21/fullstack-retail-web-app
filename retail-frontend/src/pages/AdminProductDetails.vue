@@ -11,7 +11,8 @@ interface Product {
   stock: number;
   image_url: string;
   category: string | null;
-  disabled_sizes?: string[]; // optional
+  disabled_sizes?: string[]; 
+  
 }
 
 const route = useRoute();
@@ -60,11 +61,24 @@ const saveChanges = async () => {
   if (!product.value) return;
 
   try {
-    await fetch(`http://localhost:3000/products/${product.value.id}`, {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`http://localhost:3000/products/${product.value.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify(product.value)
     });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.log("PUT failed:", text);
+      alert("Failed to save changes");
+      return;
+    }
+
     editMode.value = false;
     alert("Product updated!");
   } catch (err) {

@@ -1,22 +1,37 @@
 import { createRouter, createWebHistory } from "vue-router"
 import type { RouteRecordRaw } from "vue-router"
+import HomePage from "../pages/HomePage.vue"
+import AdminHomePage from "../pages/AdminHomePage.vue"
 import AdminDashboard from "../pages/AdminDashboard.vue"
-import SignUp from "../pages/SignUp.vue";
-import LoginPage from "../pages/LoginPage.vue";
+import SignUp from "../pages/SignUp.vue"
+import LoginPage from "../pages/LoginPage.vue"
 import ProductsPage from "../pages/ProductsPage.vue"
 import AdminProductsPage from "../pages/AdminProductsPage.vue"
 import ProductDetails from "../pages/ProductDetails.vue"
 import AdminProductDetails from "../pages/AdminProductDetails.vue"
-import BasketPage from "../pages/BasketPage.vue";
+import BasketPage from "../pages/BasketPage.vue"
+import ContactPage from "../pages/ContactPage.vue"
 
 const routes: RouteRecordRaw[] = [
   {
     path: "/",
     name: "Home",
-    component: ProductsPage
+    component: HomePage
   },
 
+  {
+    path: "/home",
+    name: "HomePage",
+    component: HomePage
+  },
   
+  {
+    path: "/admin/home",
+    name: "AdminHome",
+    component: AdminHomePage,
+    meta: { requiresAdmin: true }
+  },
+
   {
     path: "/admin",
     name: "AdminDashboard",
@@ -67,6 +82,12 @@ const routes: RouteRecordRaw[] = [
   path: "/basket",
   name: "Basket",
   component: BasketPage
+},
+
+{
+  path: "/contact",
+  name: "Contact",
+  component: ContactPage
 }
 ]
 

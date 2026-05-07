@@ -84,12 +84,30 @@ onBeforeUnmount(() => {
   document.removeEventListener("click", handleClickOutside);
 });
 
+
+
+const showSidebar = ref(false)
+
+const toggleSidebar = () => {
+  showSidebar.value = !showSidebar.value
+}
+
+const closeSidebar = () => {
+  showSidebar.value = false
+}
+
 /* =========================
    NAVIGATION
 ========================= */
 
 const homeRoute = computed(() => {
-  return role.value === "admin" ? "/admin/products" : "/products";
+  return role.value === "admin" ? "/admin/home" : "/home";
+});
+
+const productsRoute = computed(() => {
+  return role.value === "admin"
+    ? "/admin/products"
+    : "/products";
 });
 
 /* =========================
@@ -148,36 +166,51 @@ const goToProduct = (id: number) => {
 <template>
   <nav class="navbar">
 
+
+  <!-- SIDEBAR OVERLAY -->
+<div v-if="showSidebar" class="overlay" @click="closeSidebar"></div>
+
+<!-- SIDEBAR MENU -->
+<div :class="['sidebar', { open: showSidebar }]">
+
+  <div class="sidebar-header">
+    <span @click="closeSidebar" class="close-btn">✕</span>
+  </div>
+
+  <div class="sidebar-links">
+
+    <router-link :to="homeRoute" @click="closeSidebar">
+      Home
+    </router-link>
+
+    <router-link :to="productsRoute" @click="closeSidebar">
+      Products
+    </router-link>
+
+    <router-link to="/contact" @click="closeSidebar">
+      Contact
+    </router-link>
+
+    <router-link v-if="role === 'admin'" to="/admin" @click="closeSidebar">
+      Admin Dashboard
+    </router-link>
+
+  </div>
+
+</div>
+
+  <!-- ROW 1 -->
+  <div class="nav-top">
+
+    <!-- HAMBURGER -->
+    <div class="menu-icon" @click="toggleSidebar">
+      ☰
+    </div>
+
     <!-- LOGO -->
-    <div class="nav-left">
-      <router-link :to="homeRoute" class="logo">
-        RetailStore
-      </router-link>
-    </div>
-
-    <!-- SEARCH -->
-    <div class="nav-center">
-      <input
-        type="text"
-        placeholder="Search for products..."
-        v-model="searchTerm"
-        @focus="showSuggestions = true"
-        @blur="hideSuggestions"
-      />
-
-      <ul
-        v-if="showSuggestions && filteredProducts.length"
-        class="suggestions"
-      >
-        <li
-          v-for="product in filteredProducts"
-          :key="product.id"
-          @click="goToProduct(product.id)"
-        >
-          {{ product.name }}
-        </li>
-      </ul>
-    </div>
+    <router-link :to="homeRoute" class="logo">
+      Marjan Threads
+    </router-link>
 
     <!-- RIGHT SIDE -->
     <div class="nav-right">
@@ -223,35 +256,113 @@ const goToProduct = (id: number) => {
         </div>
       </div>
 
-      <router-link v-if="role === 'admin'" to="/admin" class="admin-link">
-  Admin Dashboard
-</router-link>
-
       <!-- WISHLIST -->
       <span v-if="role !== 'admin'" class="icon">❤️</span>
-
 
       <!-- BASKET -->
       <div v-if="role !== 'admin'" class="basket-icon" @click="goToBasket">
         🛒
-      <span v-if="itemCount > 0" class="basket-count">
-        {{ itemCount }}
-      </span>
+        <span v-if="itemCount > 0" class="basket-count">
+          {{ itemCount }}
+        </span>
       </div>
-      
 
     </div>
-  </nav>
+  </div>
+
+  <!-- ROW 2 -->
+  <div class="nav-search">
+
+    <input
+      type="text"
+      placeholder="Search for products..."
+      v-model="searchTerm"
+      @focus="showSuggestions = true"
+      @blur="hideSuggestions"
+    />
+
+    <ul
+      v-if="showSuggestions && filteredProducts.length"
+      class="suggestions"
+    >
+      <li
+        v-for="product in filteredProducts"
+        :key="product.id"
+        @click="goToProduct(product.id)"
+      >
+        {{ product.name }}
+      </li>
+    </ul>
+
+  </div>
+
+</nav>
 </template>
 
 <style scoped>
-.navbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.2rem 3rem;
-  border-bottom: 1px solid #ddd;
-  background: white;
+
+.navbar{
+  display:flex;
+  flex-direction:column;
+  border-bottom:1px solid #ddd;
+  background:white;
+}
+
+/* TOP ROW */
+
+.nav-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:1rem 2rem;
+  position:relative;
+}
+
+.menu-icon{
+  font-size:1.5rem;
+  cursor:pointer;
+}
+
+/* CENTER LOGO */
+
+.logo{
+  font-size:1.5rem;
+  font-weight:bold;
+  text-decoration:none;
+  color:black;
+
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+}
+
+/* RIGHT SIDE */
+
+.nav-right{
+  display:flex;
+  align-items:center;
+  gap:1.2rem;
+}
+
+/* SEARCH ROW */
+
+.nav-search{
+  position:relative;
+  padding:0.7rem 2rem 1rem 2rem;
+}
+
+.nav-search input{
+  width:100%;
+  padding:0.8rem 1rem;
+  border-radius:25px;
+  border:1px solid #ccc;
+  font-size:1rem;
+}
+
+.nav-search input:focus{
+  outline:none;
+  border-color:purple;
+  box-shadow:0 0 5px rgba(128,0,128,0.5);
 }
 
 .nav-left {
@@ -262,19 +373,69 @@ const goToProduct = (id: number) => {
   position: relative;
 }
 
-.nav-center input {
-  max-width: 500px;
-  min-width: 250px;
-  padding: 0.7rem 1rem;
-  border-radius: 25px;
-  border: 1px solid #ccc;
-  font-size: 1rem;
+
+/* OVERLAY */
+
+.overlay{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0,0,0,0.4);
+  z-index:90;
 }
 
-.nav-center input:focus {
-  outline: none;
-  border-color: purple;
-  box-shadow: 0 0 5px rgba(128, 0, 128, 0.5);
+/* SIDEBAR */
+
+.sidebar{
+  position:fixed;
+  top:0;
+  left:0;
+  width:280px;
+  height:100vh;
+  background:white;
+  box-shadow:2px 0 10px rgba(0,0,0,0.2);
+  transform:translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index:100;
+  padding:1.5rem;
+}
+
+.sidebar.open{
+  transform:translateX(0);
+}
+
+/* HEADER */
+
+.sidebar-header{
+  display:flex;
+  justify-content:flex-end;
+}
+
+.close-btn{
+  font-size:1.3rem;
+  cursor:pointer;
+}
+
+/* LINKS */
+
+.sidebar-links{
+  margin-top:2rem;
+  display:flex;
+  flex-direction:column;
+  gap:1.2rem;
+}
+
+.sidebar-links a{
+  text-decoration:none;
+  font-size:1.1rem;
+  color:black;
+  font-weight:500;
+}
+
+.sidebar-links a:hover{
+  color:purple;
 }
 
 .suggestions {
@@ -301,18 +462,6 @@ const goToProduct = (id: number) => {
   color: white;
 }
 
-.nav-right {
-  flex: 1;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.logo {
-  font-size: 1.4rem;
-  font-weight: bold;
-}
 
 .account-container {
   position: relative;
